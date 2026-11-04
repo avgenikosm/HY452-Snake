@@ -74,7 +74,7 @@ class ScoreServer():
         self.last_request_status = True
         return audio
 
-    def get_soundtracks(self):
+    def get_soundtracks(self):                                                              #ΤΗΝ ΑΛΛΑΞΑ
         print('Getting soundtracks from server')
         try:
             response = requests.get(self.url + '/asset/soundtrack/all', timeout=15)
@@ -83,10 +83,25 @@ class ScoreServer():
             print(f'Error: {e}')
             self.last_request_status = False
             return None
-        soundtracks = json.loads(response.json()['body'])
-        soundtracks = {entry['Key'] for entry in soundtracks if entry['Size'] > 0}
+
+        data = response.json()
+        if isinstance(data, dict) and 'body' in data:
+            try:
+                soundtracks = json.loads(data['body'])
+            except Exception as e:
+                print("Error decoding body:", e)
+                soundtracks = []
+        elif isinstance(data, list):
+            soundtracks = data
+        else:
+            print("Unexpected response format:", data)
+            self.last_request_status = False
+            return None
+
+        soundtracks = {entry['Key'] for entry in soundtracks if entry.get('Size', 0) > 0}
         self.last_request_status = True
         return soundtracks
+
     
     def get_leaderboard(self):
         print('Getting leaderboard from server')
@@ -97,7 +112,8 @@ class ScoreServer():
             print(f'Error: {e}')
             self.last_request_status = False
             return None
-        leaderboard = json.loads(response.json()['body'])
+        data = response.json()
+        leaderboard = data if isinstance(data, list) else json.loads(data['body'])  # αλλαγη που εκανα 
         leaderboard = {entry['username']: entry['score'] for entry in leaderboard}
         self.last_request_status = True
         return leaderboard
